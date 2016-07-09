@@ -1,0 +1,27 @@
+* TrueCrypt Volume Header Finder
+TODO
+
+** Limitations
+TODO
+
+** Compiling
+- Navigate to the root folder of the project.
+- Run the following command:
+#+BEGIN_SRC shell
+cargo build --release
+#+END_SRC
+- The =--release= flag is necessary, otherwise the performance will be very bad.
+- Optional:
+  - You can add the following into the =Cargo.toml= file to get a little more performance:
+  #+BEGIN_SRC shell
+  [profile.release]
+  lto = true
+  #+END_SRC
+  - And then run the above command.
+- There will be an executable =tcfinder= in =target/release/=.
+
+** Usage
+TODO
+
+** References
+TODO
