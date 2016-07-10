@@ -2,7 +2,17 @@
 TODO
 
 ** Limitations
-TODO
+If your TrueCrypt container was created:
+  - after version 5 which introduced XTS
+  - with default settings:
+    - Standard TrueCrypt Volume
+    - Encryption Algorithm: AES
+    - Hash Algorithm: RIPEMD-160
+    - No Keyfiles
+then this may find the sector of the Volume Header for you.
+
+Currently, it will not search for the Backup Header.
+
 
 ** Compiling
 - Navigate to the root folder of the project.
