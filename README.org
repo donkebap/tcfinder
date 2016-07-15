@@ -1,5 +1,5 @@
 * TrueCrypt Volume Header Finder
-[[https://travis-ci.org/donkebap/tcfinder.svg?branch=master]]
+[[https://travis-ci.org/donkebap/tcfinder][https://travis-ci.org/donkebap/tcfinder.svg?branch=master]]
 
 TODO
 
