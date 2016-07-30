@@ -27,6 +27,14 @@
 
 use num::{BigUint, Zero, One};
 
+#[repr(C, simd)]
+#[derive(Debug, Clone, Copy)]
+pub struct u64x2(pub u64, pub u64);
+
+extern {
+    pub fn gfmul(a: u64x2, b: u64x2) -> u64x2;
+}
+
 pub struct GF {
     // 0x1 00000000 00000000 00000000 00000087
     mod128: BigUint
@@ -92,10 +100,23 @@ impl GF {
     }
 }
 
+
+pub fn gfmul_simd(a: &[u8], b: &[u8]) -> Vec<u8> {
+    let a = &*a as *const _ as *const [u64; 2];
+    let b = &*b as *const _ as *const [u64; 2];
+    unsafe {
+        let a = u64x2((*a)[1].to_be(), (*a)[0].to_be());
+        let b = u64x2((*b)[0].to_be(), (*b)[1].to_be());
+        let result_a = &gfmul(a, b) as *const _ as *const u64;
+        let r = [ (*result_a.offset(1)).to_be(), (*result_a).to_be() ];
+        (*(&r as *const _ as *const [u8; 16])).to_vec()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use test::Bencher;
-
+    
     use num::BigUint;
     use gf2n::GF;
 
@@ -108,7 +129,7 @@ mod test {
 
     fn hex_str_to_vec(s: &str) -> Vec<u8> {
         assert!(s.len() % 2 == 0);
-        let mut v: Vec<u8> = Vec::new();
+        let mut v: Vec<u8> = Vec::with_capacity(16);
         let mut i = 0;
         while i < s.len() {
             v.push(u8::from_str_radix(&s[i..i+2], 16).unwrap());
@@ -224,6 +245,24 @@ mod test {
         }
     }
 
+    #[test]
+    fn simd_test() {
+        let test_cases = create_testcases();
+
+        for test_case in test_cases {
+            let result = super::gfmul_simd(&test_case.a, &test_case.b);
+            assert!(&result == &test_case.expected);
+        }
+    }
+
+    #[bench]
+    fn simd_test_bench(b: &mut Bencher) {
+        let test_case = &create_testcases()[0];
+        b.iter(|| {
+            super::gfmul_simd(&test_case.a, &test_case.b);
+        });
+    }
+    
     #[bench]
     fn gf2_128_mul_bench(b: &mut Bencher) {
         let gf = GF::new();
