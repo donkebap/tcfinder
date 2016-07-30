@@ -1,6 +1,7 @@
-#![feature(plugin)]
+#![feature(plugin, test)]
 #![plugin(clippy, docopt_macros)]
 
+extern crate test;
 extern crate crypto;
 extern crate num;
 extern crate time;
@@ -13,6 +14,7 @@ mod gf2n;
 mod aes;
 mod xts;
 mod tcfinder;
+mod partitioninfo;
 
 use tcfinder::TCFinder;
 
@@ -39,7 +41,7 @@ Options:
 fn main() {
     let args: Args = Args::docopt().decode().unwrap_or_else(|e| e.exit());
 
-    let tc = TCFinder::new(&args.arg_path);
+    let mut tc = TCFinder::new(&args.arg_path);
 
     let sector_ranges = if !args.flag_ranges.is_empty() {
         read_sector_ranges(&args.flag_ranges)

@@ -85,6 +85,7 @@ pub fn decrypt_block(block: &[u8], key: &[u8]) -> Result<Vec<u8>, symmetricciphe
 
 #[cfg(test)]
 mod tests {
+    use test::Bencher;
 
     #[test]
     fn test_encrypt_aes() {
@@ -115,6 +116,30 @@ mod tests {
 
         let result = super::decrypt_block(&encrypted, key_bytes).unwrap();
         assert!(result == expected);
+    }
+
+    #[bench]
+    fn bench_encrypt_aes(b: &mut Bencher) {
+        let key_str = "a0k5lg03mvh2laoqwxcbmtbdksloew58";
+        let key_bytes = key_str.as_bytes();
+
+        let plain = [99u8; 16];
+        
+        b.iter(|| {super::encrypt_block(&plain, key_bytes).unwrap();});
+    }
+
+    #[bench]
+    fn bench_decrypt_aes(b: &mut Bencher) {
+        let key_str = "a0k5lg03mvh2laoqwxcbmtbdksloew58";
+        let key_bytes = key_str.as_bytes();
+
+        let encrypted = [0x0b, 0x06, 0xb1, 0x75,
+                        0x2c, 0x34, 0x4b, 0x37,
+                        0x25, 0xda, 0x61, 0x9f,
+                        0x37, 0x35, 0x08, 0x52];
+
+
+        b.iter(|| { super::decrypt_block(&encrypted, key_bytes).unwrap(); });
     }
 }
 

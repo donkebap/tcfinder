@@ -15,10 +15,9 @@ use std::sync::Arc;
 
 use pbr::ProgressBar;
 
-const SECTOR_SIZE: u64 = 512;
-const BUFFER_SIZE: usize = 1024*128;
-const JOB_COUNT: usize = BUFFER_SIZE / SECTOR_SIZE as usize;
+use partitioninfo;
 
+const BUFFER_SIZE: usize = 128*1024;
 
 pub struct TCFinder {
     file: File
@@ -31,8 +30,16 @@ impl TCFinder {
         }
     }
     
+    pub fn scan(&mut self, sector_ranges: &[(u64, u64)], password: String) -> Vec<u64> {
+        let info = partitioninfo::read_info_ntfs(&mut self.file).unwrap();
+        println!("{}", info);
 
-    pub fn scan(&self, sector_ranges: &[(u64, u64)], password: String) -> Vec<u64> {
+        // TODO: Test ranges: negative, > total sectors
+        
+        let sector_size: u64 = info.bytes_per_sector as u64;
+        let job_count: usize = BUFFER_SIZE / sector_size as usize;
+
+
         let total_sectors_count = count_total_sectors(sector_ranges);
         let scan_start_time = time::precise_time_ns();
 
@@ -56,7 +63,7 @@ impl TCFinder {
 
             progressbar.message(&format!("[{}-{}]:  ", start_sector, end_sector));
             
-            let start_bytes = start_sector * SECTOR_SIZE;
+            let start_bytes = start_sector * sector_size;
             buf_reader.seek(SeekFrom::Start(start_bytes)).expect("Seeking to start failed!");
             let mut i = start_sector;
             
@@ -66,7 +73,7 @@ impl TCFinder {
 
                     let mut jobs = 0u8;
 
-                    for j in 0..JOB_COUNT {
+                    for j in 0..job_count {
                         // Sector range might not be multiple of buffer size. Break if over end_sector.
                         if i + j as u64 > end_sector {break;}
 
@@ -76,7 +83,7 @@ impl TCFinder {
                         let tx = tx.clone();
                         threadpool.execute(move || {
                             // Skip if 00 00 00 00 00 at start, unlikely to be a header.
-                            if &buf[j*SECTOR_SIZE as usize..j*SECTOR_SIZE as usize + 5] == [0u8;5] {
+                            if &buf[j*sector_size as usize..j*sector_size as usize + 5] == [0u8;5] {
                                 tx.send(None).unwrap();
                                 return;
                             }
@@ -84,18 +91,18 @@ impl TCFinder {
                             let mut hmac: Hmac<Ripemd160> = Hmac::new(Ripemd160::new(),
                                                                       pass.as_bytes());
                             // First 64 bytes of header is salt.
-                            let salt = &buf[j*SECTOR_SIZE as usize..j*SECTOR_SIZE as usize +64];
+                            let salt = &buf[j*sector_size as usize..j*sector_size as usize +64];
                             // Only need first block (16 bytes) to decrypt magic bytes ("TRUE").
                             let header =
-                                &buf[j*SECTOR_SIZE as usize + 64..
-                                     j*SECTOR_SIZE as usize + 64 + 16];
+                                &buf[j*sector_size as usize + 64..
+                                     j*sector_size as usize + 64 + 16];
 
                             let result = decrypt(&mut hmac, salt, header);
 
                             let found = &result[..4] == [0x54, 0x52, 0x55, 0x45];
                             if found {
                                 tx.send(
-                                    Some((i*SECTOR_SIZE, i + j as u64, arr_as_hex_str(&result)))
+                                    Some((i*sector_size, i + j as u64, arr_as_hex_str(&result)))
                                 ).unwrap();
                                 
                             } else {
@@ -205,5 +212,4 @@ mod tests {
         let decrypted_bytes = super::decrypt(&mut hmac, &TC_HEADER[..64], &TC_HEADER[64..64 +16]);
         assert!(&decrypted_bytes[..4] == [0x54, 0x52, 0x55, 0x45]);
     }
-    
 }

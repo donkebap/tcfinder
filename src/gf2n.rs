@@ -94,6 +94,8 @@ impl GF {
 
 #[cfg(test)]
 mod test {
+    use test::Bencher;
+
     use num::BigUint;
     use gf2n::GF;
 
@@ -115,9 +117,8 @@ mod test {
         v
     }
 
-    #[test]
-    fn gf2_128_mul_test() {
-        let test_cases = vec![
+    fn create_testcases() -> Vec<TestCase> {
+        vec![
             TestCase {
                 a: hex_str_to_vec("b9623d587488039f1486b2d8d9283453"),
                 b: hex_str_to_vec("a06aea0265e84b8a"),
@@ -203,7 +204,12 @@ mod test {
                 b: hex_str_to_vec("06cefb145d7640d1"),
                 expected: hex_str_to_vec("8c96b0834c896435fe8d4a70c17a8aff"),
             },
-        ];
+        ]
+    }
+
+    #[test]
+    fn gf2_128_mul_test() {
+        let test_cases = create_testcases();
         
         let gf = GF::new();
 
@@ -216,6 +222,18 @@ mod test {
             
             assert!(result == expected);
         }
+    }
+
+    #[bench]
+    fn gf2_128_mul_bench(b: &mut Bencher) {
+        let gf = GF::new();
+        let test_case = &create_testcases()[0];
+        b.iter(|| {
+            gf.gf2pow128mul(
+                BigUint::from_bytes_be(&test_case.a),
+                &BigUint::from_bytes_be(&test_case.b)
+            );
+        });
     }
     
 }
