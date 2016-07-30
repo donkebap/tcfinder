@@ -1,4 +1,4 @@
-#![feature(plugin, test)]
+#![feature(plugin, test, simd_ffi, repr_simd)]
 #![plugin(clippy, docopt_macros)]
 
 extern crate test;
