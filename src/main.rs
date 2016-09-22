@@ -1,5 +1,5 @@
 #![feature(plugin, test, simd_ffi, repr_simd)]
-#![plugin(clippy, docopt_macros)]
+#![plugin(clippy)]
 
 extern crate test;
 extern crate crypto;
@@ -16,9 +16,10 @@ mod xts;
 mod tcfinder;
 mod partitioninfo;
 
+use docopt::Docopt;
 use tcfinder::TCFinder;
 
-docopt!(Args derive Debug, "
+const USAGE: &'static str = "
 TrueCrypt Volume Header Finder.
 
 Finds sector of TrueCrypt Volume Header if created with default config.
@@ -36,10 +37,21 @@ tcfinder (-h | --help)
 Options:
   -h, --help           Show this screen.
   --ranges=<file>      Text file with sector ranges. Format: 'start;end'. Every sector range on new line.
-", arg_path: String, arg_password: String, arg_start: u64, arg_end: u64);
+";
+
+#[derive(Debug, RustcDecodable)]
+struct Args {
+    arg_path: String,
+    arg_password: String,
+    arg_start: u64,
+    arg_end: u64,
+    flag_ranges: String
+}
 
 fn main() {
-    let args: Args = Args::docopt().decode().unwrap_or_else(|e| e.exit());
+    let args: Args = Docopt::new(USAGE)
+        .and_then(|d| d.decode())
+        .unwrap_or_else(|e| e.exit());
 
     let mut tc = TCFinder::new(&args.arg_path);
 
