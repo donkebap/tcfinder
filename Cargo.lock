@@ -2,7 +2,7 @@
 name = "tcfinder"
 version = "0.1.0"
 dependencies = [
- "clippy 0.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy 0.0.90 (registry+https://github.com/rust-lang/crates.io-index)",
  "docopt 0.6.81 (registry+https://github.com/rust-lang/crates.io-index)",
  "gcc 0.3.28 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.32 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -23,15 +23,15 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.0.80"
+version = "0.0.90"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "clippy_lints 0.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy_lints 0.0.90 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "clippy_lints"
-version = "0.0.80"
+version = "0.0.90"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "matches 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -289,8 +289,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [metadata]
 "checksum aho-corasick 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "2b3fb52b09c1710b961acb35390d514be82e4ac96a9969a8e38565a29b878dc9"
-"checksum clippy 0.0.80 (registry+https://github.com/rust-lang/crates.io-index)" = "e96469b413984c78285727f94f9c626a1f2006cecdcf813b5d6893c0c85df42f"
-"checksum clippy_lints 0.0.80 (registry+https://github.com/rust-lang/crates.io-index)" = "f11938c4b10c556903bb1c1e717eb038658324bf7197e4cfc159a16417327345"
+"checksum clippy 0.0.90 (registry+https://github.com/rust-lang/crates.io-index)" = "d19bda68c3db98e3a780342f6101b44312fef20a5f13ce756d1202a35922b01b"
+"checksum clippy_lints 0.0.90 (registry+https://github.com/rust-lang/crates.io-index)" = "3d4ed67c69b9bb35169be2538691d290a3aa0cbfd4b9f0bfb7c221fc1d399a96"
 "checksum docopt 0.6.81 (registry+https://github.com/rust-lang/crates.io-index)" = "323b5c50646d8d3f26c826eb62c15659b2bc031831d56bcdb02e0e49c5b73829"
 "checksum gcc 0.3.28 (registry+https://github.com/rust-lang/crates.io-index)" = "3da3a2cbaeb01363c8e3704fd9fd0eb2ceb17c6f27abd4c1ef040fb57d20dc79"
 "checksum kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7507624b29483431c0ba2d82aece8ca6cdba9382bff4ddd0f7490560c056098d"

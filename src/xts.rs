@@ -24,36 +24,14 @@
 //
 // Original source: http://www.bjrn.se/code/pytruecrypt/xtspy.txt
 
-use gf2n::GF;
-use num::{BigUint, One};
-
-fn gf2pow128powof2(n: u32, gf: &GF) -> BigUint {
-    let nn = n;
-    let two = BigUint::from_bytes_be(&[2u8]);
-    if nn < 128 {
-        super::num::checked_pow(two, nn as usize).expect("Pow of BigUint failed!")
-    } else {
-        let mut val: BigUint = One::one();
-        for _ in 0..nn {
-            val = gf.gf2pow128mul(val.clone(), &two);
-        }
-        val
-    }
-}
+use gf2n;
 
 pub fn xts_decrypt(key1: &[u8], key2: &[u8], i: u8, block: &[u8]) -> [u8; 16] {
-    let gf: GF = GF::new();
-    
     let n_txt = [0u8; 16];
     let e_k2_n = super::aes::encrypt_block(&n_txt, key2).expect("Encrypting block failed!");
 
-    let a_i = gf2pow128powof2(i as u32, &gf);
-
-    let mut e_mul_a = gf.gf2pow128mul(BigUint::from_bytes_be(&e_k2_n), &a_i).to_bytes_be();
-
-    if e_mul_a.len() < 16 {
-        e_mul_a = arr_size_to_16b(e_mul_a);
-    }
+    let a_i = [0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+    let e_mul_a = gf2n::gfmul_simd(&e_k2_n, &a_i);
 
     let xored = xor_bytes_16(&e_mul_a, block);
 

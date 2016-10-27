@@ -169,6 +169,7 @@ fn count_total_sectors(sector_ranges: &[(u64, u64)]) -> u64 {
 mod tests {
     use crypto::hmac::Hmac;
     use crypto::ripemd160::Ripemd160;
+    use test::Bencher;
 
     const TC_HEADER: [u8; 512] =
         [0x3a, 0x6b, 0x85, 0xaf, 0x49, 0xc2, 0x40, 0x1b, 0x77, 0x21, 0x33, 0xc3, 0x31, 0x1b, 0xa8, 0xe9,
@@ -211,5 +212,12 @@ mod tests {
         let mut hmac: Hmac<Ripemd160> = Hmac::new(Ripemd160::new(), password.as_bytes());
         let decrypted_bytes = super::decrypt(&mut hmac, &TC_HEADER[..64], &TC_HEADER[64..64 +16]);
         assert!(&decrypted_bytes[..4] == [0x54, 0x52, 0x55, 0x45]);
+    }
+
+    #[bench]
+    fn test_decrypt_bench(b: &mut Bencher) {
+        let password = "p4ssword";
+        let mut hmac: Hmac<Ripemd160> = Hmac::new(Ripemd160::new(), password.as_bytes());
+        b.iter(|| {super::decrypt(&mut hmac, &TC_HEADER[..64], &TC_HEADER[64..64 +16]);});
     }
 }
