@@ -19,7 +19,7 @@ mod partitioninfo;
 use docopt::Docopt;
 use tcfinder::TCFinder;
 
-const USAGE: &'static str = "
+const USAGE: &str = "
 TrueCrypt Volume Header Finder.
 
 Finds sector of TrueCrypt Volume Header if created with default config.
@@ -45,13 +45,13 @@ struct Args {
     arg_password: String,
     arg_start: u64,
     arg_end: u64,
-    flag_ranges: String
+    flag_ranges: String,
 }
 
 fn main() {
-    let args: Args = Docopt::new(USAGE)
-        .and_then(|d| d.decode())
-        .unwrap_or_else(|e| e.exit());
+    let args: Args = Docopt::new(USAGE).and_then(|d| d.decode()).unwrap_or_else(
+        |e| e.exit(),
+    );
 
     let mut tc = TCFinder::new(&args.arg_path);
 
@@ -64,7 +64,10 @@ fn main() {
     let results = tc.scan(&sector_ranges, args.arg_password);
 
     if !results.is_empty() {
-        println!("\x1b\x5b1;32;1mPotential headers: {:?}\x1b\x5b1;0m", results);
+        println!(
+            "\x1b\x5b1;32;1mPotential headers: {:?}\x1b\x5b1;0m",
+            results
+        );
     } else {
         println!("\x1b\x5b1;31;1mNo headers found.\x1b\x5b1;0m");
     }
@@ -73,14 +76,29 @@ fn main() {
 fn read_sector_ranges(path: &str) -> Vec<(u64, u64)> {
     use std::io::{BufReader, BufRead};
     use std::str::FromStr;
-    
-    let file = std::fs::File::open(path).expect("Could not open file for sector ranges.");
+
     let mut sector_ranges: Vec<(u64, u64)> = Vec::new();
-    for line in BufReader::new(file).lines() {
-        let line = line.expect("Could not read line.");
-        let range_str = line.split(';').collect::<Vec<&str>>();
-        sector_ranges.push((u64::from_str(range_str[0]).expect("Invalid char in range list."),
-                            u64::from_str(range_str[1]).expect("Invalid char in range list.")));
+    if let Ok(file) = std::fs::File::open(path) {
+        for line in BufReader::new(file).lines() {
+            let mut line = line.expect("Could not read line.");
+            if line.contains('#') {
+                line = String::from(line.split('#').collect::<Vec<&str>>()[0].trim());
+            }
+
+            if !line.is_empty() {
+                let range_str = line.split(';').collect::<Vec<&str>>();
+                sector_ranges.push((
+                    u64::from_str(range_str[0]).expect(
+                        "Invalid char in range list.",
+                    ),
+                    u64::from_str(range_str[1]).expect(
+                        "Invalid char in range list.",
+                    ),
+                ));
+            }
+        }
+    } else {
+        println!("Could not open file for sector ranges.");
     }
     sector_ranges
 }

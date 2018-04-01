@@ -57,8 +57,3 @@ __m128i gfmul(__m128i a, __m128i b) {
 
   return reduce(X0, X1, X2, X3);
 }
-
-__m128i give_me_back(__m128i a) {
-  printf("%02llx %02llx\n", a[0], a[1]);
-  return a;
-}

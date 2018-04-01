@@ -25,81 +25,14 @@
 //
 // Original source: http://www.bjrn.se/code/pytruecrypt/gf2npy.txt
 
-use num::{BigUint, Zero, One};
-
-#[repr(C, simd)]
+#[repr(simd)]
+#[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct u64x2(pub u64, pub u64);
 
 extern {
     pub fn gfmul(a: u64x2, b: u64x2) -> u64x2;
 }
-
-pub struct GF {
-    // 0x1 00000000 00000000 00000000 00000087
-    mod128: BigUint
-}
-
-impl GF {
-    pub fn new() -> GF {
-        GF {
-            mod128: {
-                BigUint::from_bytes_be(
-                    &[0x1, 0x00, 0x00, 0x00,
-                      0x00, 0x00, 0x00, 0x00,
-                      0x00, 0x00, 0x00, 0x00,
-                      0x00, 0x00, 0x00, 0x00,
-                      0x87])
-            }
-        }
-    }
-
-    fn xor_mod(&self, mut n: BigUint, modval: &BigUint) -> BigUint {
-        loop {
-            let n_bits = n.bits() - 1;
-            let modval_bits = modval.bits() - 1;
-
-            if n_bits == modval_bits { n = n ^ modval; }
-            if n_bits <= modval_bits { break; }
-
-            let x = n_bits - modval_bits;
-            
-            let lower = &n & ((BigUint::one() << x) - BigUint::one());
-            n = (((n >> x) ^ modval) << x) | lower;
-        }
-        n
-    }
-
-    fn gf2n_mul(&self, mut a: BigUint, b: &BigUint, modval: &BigUint) -> BigUint {
-        let mut res: BigUint = BigUint::zero();
-        let mut a_cnt = 0;
-
-        while !a.is_zero() {
-            let mut b2 = b.clone();
-            let mut b_cnt = 0;
-
-            if !(&a & BigUint::one()).is_zero() {
-                while !b2.is_zero() {
-                    if !(&b2 & BigUint::one()).is_zero() {
-                        res = res ^ (BigUint::one() << (a_cnt + b_cnt));
-                    }
-                    b2 = b2 >> 1;
-                    b_cnt += 1;
-                }
-            }
-
-            a = a >> 1;
-            a_cnt += 1;
-        }
-
-        self.xor_mod(res, modval)
-    }
-
-    pub fn gf2pow128mul(&self, a: BigUint, b: &BigUint) -> BigUint {
-        self.gf2n_mul(a, b, &self.mod128)
-    }
-}
-
 
 pub fn gfmul_simd(a: &[u8], b: &[u8]) -> Vec<u8> {
     let a = &*a as *const _ as *const [u64; 2];
@@ -117,10 +50,6 @@ pub fn gfmul_simd(a: &[u8], b: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod test {
     use test::Bencher;
-    
-    use num::BigUint;
-    use gf2n::GF;
-
 
     struct TestCase {
         pub a: Vec<u8>,
@@ -129,7 +58,7 @@ mod test {
     }
 
     fn hex_str_to_vec(s: &str) -> Vec<u8> {
-        assert!(s.len() % 2 == 0);
+        assert_eq!(s.len() % 2, 0);
         let mut v: Vec<u8> = Vec::new();
         let mut i = 0;
         while i < s.len() {
@@ -236,29 +165,12 @@ mod test {
     }
 
     #[test]
-    fn gf2_128_mul_test() {
-        let test_cases = create_testcases();
-        
-        let gf = GF::new();
-
-        for test_case in test_cases {
-            let result = gf.gf2pow128mul(
-                BigUint::from_bytes_be(&test_case.a),
-                &BigUint::from_bytes_be(&test_case.b)
-            );
-            let expected = BigUint::from_bytes_be(&test_case.expected);
-            
-            assert!(result == expected);
-        }
-    }
-
-    #[test]
     fn simd_test() {
         let test_cases = create_testcases();
 
         for test_case in &test_cases {
             let result = super::gfmul_simd(&test_case.a, &test_case.b);
-            assert!(&result == &test_case.expected);
+            assert_eq!(&result, &test_case.expected);
         }
     }
 
@@ -267,18 +179,6 @@ mod test {
         let test_case = &create_testcases()[0];
         b.iter(|| {
             super::gfmul_simd(&test_case.a, &test_case.b);
-        });
-    }
-    
-    #[bench]
-    fn gf2_128_mul_bench(b: &mut Bencher) {
-        let gf = GF::new();
-        let test_case = &create_testcases()[0];
-        b.iter(|| {
-            gf.gf2pow128mul(
-                BigUint::from_bytes_be(&test_case.a),
-                &BigUint::from_bytes_be(&test_case.b)
-            );
         });
     }
     

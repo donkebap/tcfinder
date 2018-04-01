@@ -99,7 +99,7 @@ mod tests {
                         0x37, 0x35, 0x08, 0x52];
         
         let result = super::encrypt_block(&plain, key_bytes).unwrap();
-        assert!(result == expected);
+        assert_eq!(result, expected);
     }
     
     #[test]
@@ -115,7 +115,7 @@ mod tests {
         let expected = [99u8; 16];
 
         let result = super::decrypt_block(&encrypted, key_bytes).unwrap();
-        assert!(result == expected);
+        assert_eq!(result, expected);
     }
 
     #[bench]

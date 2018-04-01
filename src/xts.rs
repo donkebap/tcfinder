@@ -26,7 +26,7 @@
 
 use gf2n;
 
-pub fn xts_decrypt(key1: &[u8], key2: &[u8], i: u8, block: &[u8]) -> [u8; 16] {
+pub fn xts_decrypt(key1: &[u8], key2: &[u8], block: &[u8]) -> [u8; 16] {
     let n_txt = [0u8; 16];
     let e_k2_n = super::aes::encrypt_block(&n_txt, key2).expect("Encrypting block failed!");
 
@@ -39,7 +39,7 @@ pub fn xts_decrypt(key1: &[u8], key2: &[u8], i: u8, block: &[u8]) -> [u8; 16] {
         .expect("Decrypting block failed!");
 
     if key1_decrypted.len() < 16 {
-        key1_decrypted = arr_size_to_16b(key1_decrypted);
+        key1_decrypted = arr_size_to_16b(&key1_decrypted);
     }
 
     xor_bytes_16(&e_mul_a, &key1_decrypted)
@@ -49,12 +49,12 @@ fn xor_bytes_16(a: &[u8], b: &[u8]) -> [u8; 16] {
     assert!(a.len() == 16 && b.len() == 16, "xor_bytes_16: length != 16");
     let mut result = [0u8; 16];
     for i in 0..16 {
-        result[i] = &a[i] ^ &b[i];
+        result[i] = a[i] ^ b[i];
     }
     result
 }
 
-fn arr_size_to_16b(arr: Vec<u8>) -> Vec<u8> {
+fn arr_size_to_16b(arr: &[u8]) -> Vec<u8> {
     let mut temp = vec![0u8; 16];
     let diff = 16 - arr.len();
     for (i, item) in arr.iter().enumerate() {

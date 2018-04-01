@@ -33,11 +33,11 @@ pub fn read_info_ntfs(partition: &mut File) -> Result<PartitionInfo, &'static st
             return Err("Failed to read the full first 512 Bytes of partition. Bytes missing.")
         }
         let buffer_ptr = &buffer as *const _;
-        
+
         let mut info = PartitionInfo::default();
         unsafe {
             let filesystem_identifier: u64 = *((buffer_ptr as u64 + 0x03) as *const u64);
-            if filesystem_identifier != 0x202020205346544E {
+            if filesystem_identifier != 0x2020_2020_5346_544E {
                 return Err("Filesystem is not NTFS.");
             }
 
