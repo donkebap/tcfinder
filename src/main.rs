@@ -1,23 +1,24 @@
 #![feature(plugin, test, simd_ffi, repr_simd)]
-#![plugin(clippy)]
 
-extern crate test;
 extern crate crypto;
-extern crate num;
-extern crate time;
-extern crate rustc_serialize;
 extern crate docopt;
-extern crate threadpool;
+extern crate num;
 extern crate pbr;
+extern crate rustc_serialize;
+extern crate test;
+extern crate threadpool;
+extern crate time;
+extern crate serde;
 
-mod gf2n;
 mod aes;
-mod xts;
-mod tcfinder;
+mod gf2n;
 mod partitioninfo;
+mod tcfinder;
+mod xts;
 
 use docopt::Docopt;
 use tcfinder::TCFinder;
+use serde::Deserialize;
 
 const USAGE: &str = "
 TrueCrypt Volume Header Finder.
@@ -39,7 +40,7 @@ Options:
   --ranges=<file>      Text file with sector ranges. Format: 'start;end'. Every sector range on new line.
 ";
 
-#[derive(Debug, RustcDecodable)]
+#[derive(Debug, Deserialize)]
 struct Args {
     arg_path: String,
     arg_password: String,
@@ -49,9 +50,7 @@ struct Args {
 }
 
 fn main() {
-    let args: Args = Docopt::new(USAGE).and_then(|d| d.decode()).unwrap_or_else(
-        |e| e.exit(),
-    );
+    let args: Args = Docopt::new(USAGE).and_then(|d| d.deserialize()).unwrap_or_else(|e| e.exit());
 
     let mut tc = TCFinder::new(&args.arg_path);
 
@@ -64,17 +63,14 @@ fn main() {
     let results = tc.scan(&sector_ranges, args.arg_password);
 
     if !results.is_empty() {
-        println!(
-            "\x1b\x5b1;32;1mPotential headers: {:?}\x1b\x5b1;0m",
-            results
-        );
+        println!("\x1b\x5b1;32;1mPotential headers: {:?}\x1b\x5b1;0m", results);
     } else {
         println!("\x1b\x5b1;31;1mNo headers found.\x1b\x5b1;0m");
     }
 }
 
 fn read_sector_ranges(path: &str) -> Vec<(u64, u64)> {
-    use std::io::{BufReader, BufRead};
+    use std::io::{BufRead, BufReader};
     use std::str::FromStr;
 
     let mut sector_ranges: Vec<(u64, u64)> = Vec::new();
@@ -88,12 +84,8 @@ fn read_sector_ranges(path: &str) -> Vec<(u64, u64)> {
             if !line.is_empty() {
                 let range_str = line.split(';').collect::<Vec<&str>>();
                 sector_ranges.push((
-                    u64::from_str(range_str[0]).expect(
-                        "Invalid char in range list.",
-                    ),
-                    u64::from_str(range_str[1]).expect(
-                        "Invalid char in range list.",
-                    ),
+                    u64::from_str(range_str[0]).expect("Invalid char in range list."),
+                    u64::from_str(range_str[1]).expect("Invalid char in range list."),
                 ));
             }
         }

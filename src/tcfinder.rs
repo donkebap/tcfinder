@@ -10,10 +10,8 @@ use xts;
 use time;
 
 use threadpool::ThreadPool;
-use std::sync::mpsc::{self, Receiver};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-use std::io::Stdout;
 use pbr::ProgressBar;
 
 use partitioninfo;
@@ -40,7 +38,6 @@ impl TCFinder {
         let sector_size: u64 = u64::from(info.bytes_per_sector);
         let job_count: usize = BUFFER_SIZE / sector_size as usize;
 
-
         let total_sectors_count = count_total_sectors(sector_ranges);
         let scan_start_time = time::precise_time_ns();
 
@@ -55,16 +52,17 @@ impl TCFinder {
         let mut buf = [0u8; BUFFER_SIZE];
 
         // Vec of all potential headers.
-        let mut found_sectors: Vec<u64> = Vec::new();
+        let found_sectors: Arc<Mutex<Vec<u64>>> = Arc::new(Mutex::new(Vec::new()));
 
         let threadpool = ThreadPool::new(4);
 
-        let (tx, rx) = mpsc::channel();
+        let progressbar = Arc::new(Mutex::new(progressbar));
 
         for &(start_sector, end_sector) in sector_ranges {
-
-            progressbar.message(&format!("[{}-{}]:  ", start_sector, end_sector));
-
+            {
+                let mut progressbar_mutex = progressbar.lock().unwrap();
+                progressbar_mutex.message(&format!("[{}-{}]:  ", start_sector, end_sector));
+            }
             let start_bytes = start_sector * sector_size;
             buf_reader.seek(SeekFrom::Start(start_bytes)).expect("Seeking to start failed!");
             let mut i = start_sector;
@@ -72,20 +70,18 @@ impl TCFinder {
             while i <= end_sector {
                 buf_reader.read_exact(&mut buf).expect("Filling buffer failed!");
 
-                let mut jobs = 0u32;
-
                 for j in 0..job_count {
                     // Sector range might not be multiple of buffer size. Break if over end_sector.
                     if i + j as u64 > end_sector {break;}
 
-
                     let pass = Arc::clone(&shared_password);
-                    jobs += 1;
-                    let tx = tx.clone();
+
+                    let progressbar_arc = progressbar.clone();
+                    let result_vec = found_sectors.clone();
                     threadpool.execute(move || {
                         // Skip if 00 00 00 00 00 at start, unlikely to be a header.
                         if buf[j*sector_size as usize..j*sector_size as usize + 5] == [0u8;5] {
-                            tx.send(None).unwrap();
+                            progressbar_arc.lock().unwrap().inc();
                             return;
                         }
 
@@ -102,31 +98,29 @@ impl TCFinder {
 
                         let found = result[..4] == [0x54, 0x52, 0x55, 0x45];
                         if found {
-                            tx.send(
-                                Some((i*sector_size, i + j as u64, arr_as_hex_str(&result)))
-                            ).unwrap();
-
-                        } else {
-                            tx.send(None).unwrap();
+                            let mut result_vec = result_vec.lock().unwrap();
+                            result_vec.push(i + j as u64);
+                            println!("\n\x1b\x5b1;32;1mFOUND: {} = {} LBA", i*sector_size, i + j as u64);
+                            println!("Decrypted: {}\x1b\x5b1;0m", arr_as_hex_str(&result));
                         }
+
+                        progressbar_arc.lock().unwrap().inc();
                     });
 
-                    if jobs >= 100 {
-                        collect_results(&rx, jobs, &mut progressbar, &mut found_sectors);
-                        jobs = 0;
+                    if threadpool.queued_count() > 500 {
+                        threadpool.join();
                     }
                 }
 
-                collect_results(&rx, jobs, &mut progressbar, &mut found_sectors);
                 buf_reader.consume(BUFFER_SIZE);
                 i += BUFFER_SIZE as u64 / 512;
             }
         }
-
+        threadpool.join();
         let scan_end_time = time::precise_time_ns();
         println!("\nDone! Time: {}s", (scan_end_time - scan_start_time) / 1_000_000_000);
 
-        found_sectors
+        Arc::try_unwrap(found_sectors).unwrap().into_inner().unwrap()
     }
 }
 
@@ -136,23 +130,6 @@ fn decrypt(hmac: &mut Hmac<Ripemd160>, salt: &[u8], header: &[u8]) -> [u8; 16] {
     let key1 = &header_keypool[..32];
     let key2 = &header_keypool[32..];
     xts::xts_decrypt(key1, key2, header)
-}
-
-fn collect_results(rx: &Receiver<Option<(u64,u64,String)>>,
-                   job_count: u32,
-                   progressbar: &mut ProgressBar<Stdout>,
-                   found_sectors: &mut Vec<u64>) {
-    for _ in 0..job_count {
-        match rx.recv().unwrap() {
-            None => {},
-            Some((a, b, c)) => {
-                found_sectors.push(b);
-                println!("\n\x1b\x5b1;32;1mFOUND: {} = {} LBA", a, b);
-                println!("Decrypted: {}\x1b\x5b1;0m", c);
-            }
-        }
-    }
-    progressbar.add(u64::from(job_count));
 }
 
 fn arr_as_hex_str(arr: &[u8]) -> String {

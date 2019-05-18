@@ -25,8 +25,7 @@
 //
 // Original source: http://www.bjrn.se/code/pytruecrypt/gf2npy.txt
 
-#[repr(simd)]
-#[repr(C)]
+#[repr(C, simd)]
 #[derive(Debug, Clone, Copy)]
 pub struct u64x2(pub u64, pub u64);
 
